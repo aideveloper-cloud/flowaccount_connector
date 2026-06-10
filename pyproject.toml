@@ -1,15 +1,15 @@
-app_name = "flowaccount_connector"
-app_title = "FlowAccount Connector"
-app_publisher = "K Garden"
-app_description = "Push ERPNext sales documents to FlowAccount via OpenAPI"
-app_email = "ai.developer@kgarden.local"
-app_license = "MIT"
+[project]
+name = "flowaccount_connector"
+authors = [{ name = "K Garden", email = "ai.developer@kgarden.local" }]
+description = "Push ERPNext sales documents to FlowAccount via OpenAPI"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = []
 
-# Push to FlowAccount when a Quotation is submitted.
-doc_events = {
-    "Quotation": {
-        "on_submit": "flowaccount_connector.flowaccount.events.on_quotation_submit",
-    }
-}
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
 
-# The custom fields below are auto-created on install via fixtures/custom_field.json
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
