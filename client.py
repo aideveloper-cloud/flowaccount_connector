@@ -1,0 +1,24 @@
+[
+ {
+  "doctype": "Custom Field",
+  "dt": "Quotation",
+  "fieldname": "flowaccount_document_id",
+  "label": "FlowAccount Document",
+  "fieldtype": "Data",
+  "read_only": 1,
+  "insert_after": "customer_name",
+  "module": "FlowAccount Connector",
+  "no_copy": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Quotation",
+  "fieldname": "flowaccount_synced",
+  "label": "FlowAccount Synced",
+  "fieldtype": "Check",
+  "read_only": 1,
+  "insert_after": "flowaccount_document_id",
+  "module": "FlowAccount Connector",
+  "no_copy": 1
+ }
+]
