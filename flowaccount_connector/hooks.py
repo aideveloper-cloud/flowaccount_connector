@@ -21,3 +21,15 @@ scheduler_events = {
 }
 
 # The custom fields below are auto-created on install via fixtures/custom_field.json
+
+
+# Show FlowAccount as its own tile on the desk apps screen (Frappe v15+/v16).
+add_to_apps_screen = [
+    {
+        "name": "flowaccount_connector",
+        "logo": "/assets/frappe/images/frappe-framework-logo.svg",
+        "title": "FlowAccount",
+        "route": "/app/flowaccount",
+        "has_permission": "",
+    }
+]
