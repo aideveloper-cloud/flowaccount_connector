@@ -11,6 +11,10 @@ from flowaccount_connector.flowaccount import client, mapping
 def on_quotation_submit(doc, method=None):
     if not frappe.conf.get("flowaccount_enabled"):
         return
+    # Kill-switch for UAT/staging sites that share production credentials:
+    # lets the read-only pull run while blocking outbound document creation.
+    if frappe.conf.get("flowaccount_push_disabled"):
+        return
     if doc.get("flowaccount_document_id"):
         return
     frappe.enqueue(

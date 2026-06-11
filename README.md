@@ -53,6 +53,7 @@ dashboard → **Sites → ... → Site Config** เพิ่ม key เหล่
 | `flowaccount_client_secret` | (client secret ตัวใหม่ที่ regenerate แล้ว) |
 | `flowaccount_pull_enabled`  | `1` เมื่อพร้อมเปิด pull sync (ปิดไว้โดย default) |
 | `flowaccount_pull_pages`    | (ไม่บังคับ) จำนวนหน้าที่ดึงต่อรอบ ค่าเริ่มต้น 5 หน้า × 50 รายการ |
+| `flowaccount_push_disabled` | `1` บน site UAT/ทดสอบ — ปิดขา push (กันเอกสารทดสอบหลุดเข้า FlowAccount จริง) แต่ pull ยังทำงาน |
 
 > ใช้ secret **ตัวใหม่** ที่ regenerate หลังจากที่ตัวเดิมเคยถูกแชร์ออกไป
 
