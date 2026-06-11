@@ -1,6 +1,20 @@
-# FlowAccount Connector (ERPNext → FlowAccount)
+# FlowAccount Connector (ERPNext ⇄ FlowAccount)
 
-ดันใบเสนอราคา (Quotation) จาก ERPNext เข้า FlowAccount อัตโนมัติเมื่อกด Submit
+เชื่อม ERPNext กับ FlowAccount โดย ERPNext เป็นฐานข้อมูลหลักของบริษัท
+และฝ่ายบัญชียังทำงานบนหน้า FlowAccount ได้ตามเดิม
+
+ทิศทางข้อมูล (แต่ละประเภทวิ่งทางเดียว ป้องกันข้อมูลชนกัน):
+
+| ข้อมูล | ทิศทาง | ปลายทางใน ERPNext |
+|---|---|---|
+| Quotation (ทีมขายสร้างใน ERPNext) | ERPNext → FlowAccount | — (push ตอน Submit) |
+| ลูกค้า (Contacts ใน FlowAccount) | FlowAccount → ERPNext | Customer (upsert จริง) |
+| สินค้า (Products ใน FlowAccount) | FlowAccount → ERPNext | Item (non-stock, upsert จริง) |
+| ใบแจ้งหนี้/ใบกำกับภาษี/ใบเสร็จ/ใบวางบิล | FlowAccount → ERPNext | FlowAccount Document (สำเนา read-only) |
+
+> เอกสารขายจาก FlowAccount เก็บเป็น "สำเนา" ไม่สร้างเป็น Sales Invoice จริง
+> เพื่อไม่ให้ ERPNext ลงบัญชี GL ซ้ำกับสมุดบัญชีของ FlowAccount
+
 ติดตั้งบน Frappe Cloud ได้ **โดยไม่ต้องมี dev environment / ไม่ต้องแตะ terminal**
 
 ---
@@ -37,6 +51,8 @@ dashboard → **Sites → ... → Site Config** เพิ่ม key เหล่
 | `flowaccount_enabled`       | `1`                                      |
 | `flowaccount_client_id`     | (client id ของคุณ)                       |
 | `flowaccount_client_secret` | (client secret ตัวใหม่ที่ regenerate แล้ว) |
+| `flowaccount_pull_enabled`  | `1` เมื่อพร้อมเปิด pull sync (ปิดไว้โดย default) |
+| `flowaccount_pull_pages`    | (ไม่บังคับ) จำนวนหน้าที่ดึงต่อรอบ ค่าเริ่มต้น 5 หน้า × 50 รายการ |
 
 > ใช้ secret **ตัวใหม่** ที่ regenerate หลังจากที่ตัวเดิมเคยถูกแชร์ออกไป
 
@@ -60,11 +76,21 @@ flowaccount_connector/
   hooks.py                           # ผูก event on_submit ของ Quotation
   modules.txt  patches.txt
   fixtures/custom_field.json         # สร้าง custom field อัตโนมัติตอน install
+  flowaccount_connector/doctype/
+    flowaccount_document/            # DocType สำเนาเอกสารจาก FlowAccount
   flowaccount/
-    client.py                        # token (cache) + create_quotation
+    client.py                        # token (cache) + REST helper + pagination
     mapping.py                       # Quotation -> payload FlowAccount
-    events.py                        # background job ตอน submit
+    events.py                        # background job ตอน submit (push)
+    sync.py                          # scheduled job รายชั่วโมง (pull)
 ```
+
+## Pull sync ทำงานยังไง
+- รันอัตโนมัติทุกชั่วโมง (scheduler) — ไม่ทำอะไรเลยจนกว่าจะตั้ง `flowaccount_pull_enabled = 1`
+- ลูกค้า: จับคู่ด้วย FlowAccount ID → เลขผู้เสียภาษี → ชื่อ ก่อนสร้างใหม่ (กันข้อมูลซ้ำ)
+- สินค้า: สร้างเป็น non-stock item เสมอ จะไม่ไปแตะตัวเลขคลังสินค้า
+- เอกสาร: ดูได้ที่ list "FlowAccount Document" ใน ERPNext (มี payload JSON เต็มแนบไว้)
+- backfill ข้อมูลเก่าทั้งหมด: ตั้ง `flowaccount_pull_pages` สูง ๆ ชั่วคราว (เช่น 100) หนึ่งรอบ แล้วลดกลับ
 
 ## ปรับแต่งภายหลัง (แก้ใน mapping.py)
 - `creditType` ตอนนี้ = 3 (เงินสด) ถ้าให้เครดิตเปลี่ยนเป็น 1 + ใส่ `creditDays`

@@ -22,5 +22,29 @@
   "insert_after": "flowaccount_document_id",
   "module": "FlowAccount Connector",
   "no_copy": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Customer-flowaccount_contact_id",
+  "dt": "Customer",
+  "fieldname": "flowaccount_contact_id",
+  "label": "FlowAccount Contact ID",
+  "fieldtype": "Data",
+  "read_only": 1,
+  "insert_after": "tax_id",
+  "module": "FlowAccount Connector",
+  "no_copy": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-flowaccount_product_id",
+  "dt": "Item",
+  "fieldname": "flowaccount_product_id",
+  "label": "FlowAccount Product ID",
+  "fieldtype": "Data",
+  "read_only": 1,
+  "insert_after": "stock_uom",
+  "module": "FlowAccount Connector",
+  "no_copy": 1
  }
 ]

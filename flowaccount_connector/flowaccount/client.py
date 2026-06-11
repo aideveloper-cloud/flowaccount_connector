@@ -59,30 +59,50 @@ def get_token(force=False):
     return token
 
 
-def create_quotation(payload):
-    """POST a SimpleDocument quotation. Retries once on 401 with a fresh token."""
-    url = f"{gateway()}/quotations"
+def _request(method, path, params=None, json_body=None):
+    """Send an authed request. Retries once on 401 with a fresh token."""
+    url = f"{gateway()}{path}"
 
-    def _post(token):
-        return requests.post(
+    def _send(token):
+        return requests.request(
+            method,
             url,
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
             },
-            json=payload,
+            params=params,
+            json=json_body,
             timeout=60,
         )
 
-    resp = _post(get_token())
+    resp = _send(get_token())
     if resp.status_code == 401:
-        resp = _post(get_token(force=True))
+        resp = _send(get_token(force=True))
 
     if not resp.ok:
         frappe.log_error(
-            title="FlowAccount quotation push failed",
-            message=f"HTTP {resp.status_code}\n{resp.text}\n\nPayload:\n{frappe.as_json(payload)}",
+            title=f"FlowAccount API failed: {method} {path}",
+            message=f"HTTP {resp.status_code}\n{resp.text}\n\nPayload:\n{frappe.as_json(json_body)}",
         )
         resp.raise_for_status()
 
     return resp.json()
+
+
+def create_quotation(payload):
+    """POST a SimpleDocument quotation."""
+    return _request("POST", "/quotations", json_body=payload)
+
+
+def iter_list(path, page_size=50, max_pages=5):
+    """Yield records from a paginated list endpoint (?currentPage=&pageSize=)."""
+    page = 1
+    while page <= max_pages:
+        data = _request("GET", path, params={"currentPage": page, "pageSize": page_size})
+        batch = (data or {}).get("data") or []
+        for record in batch:
+            yield record
+        if len(batch) < page_size:
+            break
+        page += 1

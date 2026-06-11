@@ -12,4 +12,12 @@ doc_events = {
     }
 }
 
+# Pull FlowAccount masters/documents into ERPNext every hour.
+# No-op unless flowaccount_pull_enabled is set in Site Config (see sync.py).
+scheduler_events = {
+    "hourly": [
+        "flowaccount_connector.flowaccount.sync.pull_all",
+    ]
+}
+
 # The custom fields below are auto-created on install via fixtures/custom_field.json
