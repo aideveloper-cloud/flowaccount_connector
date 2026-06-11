@@ -96,11 +96,16 @@ def create_quotation(payload):
 
 
 def iter_list(path, page_size=50, max_pages=5):
-    """Yield records from a paginated list endpoint (?currentPage=&pageSize=)."""
+    """Yield records from a paginated list endpoint (?currentPage=&pageSize=).
+
+    Response shape (verified against the live API):
+      {"data": {"total": N, "currentPage": 1, "list": [...]}, "status": ..., ...}
+    """
     page = 1
     while page <= max_pages:
-        data = _request("GET", path, params={"currentPage": page, "pageSize": page_size})
-        batch = (data or {}).get("data") or []
+        body = _request("GET", path, params={"currentPage": page, "pageSize": page_size})
+        data = (body or {}).get("data") or {}
+        batch = data if isinstance(data, list) else (data.get("list") or [])
         for record in batch:
             yield record
         if len(batch) < page_size:

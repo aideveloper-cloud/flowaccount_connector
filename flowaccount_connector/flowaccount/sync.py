@@ -18,9 +18,9 @@ Site Config keys:
 import frappe
 from flowaccount_connector.flowaccount import client
 
+# No separate /invoices endpoint exists — invoices live inside /tax-invoices.
 DOCUMENT_ENDPOINTS = {
     "billing-note": "/billing-notes",
-    "invoice": "/invoices",
     "tax-invoice": "/tax-invoices",
     "receipt": "/receipts",
 }
@@ -68,13 +68,14 @@ def pull_documents(max_pages=5):
 
 def _upsert_customer(contact):
     fa_id = str(contact.get("id") or "")
-    name = (contact.get("name") or "").strip()
-    if not fa_id or not name:
+    name = (contact.get("contactName") or "").strip()
+    tax_id = (contact.get("contactTaxId") or "").strip()
+    if not fa_id or not name or name == "-":
         return
 
     existing = frappe.db.get_value("Customer", {"flowaccount_contact_id": fa_id})
-    if not existing and contact.get("taxNumber"):
-        existing = frappe.db.get_value("Customer", {"tax_id": contact["taxNumber"]})
+    if not existing and tax_id:
+        existing = frappe.db.get_value("Customer", {"tax_id": tax_id})
     if not existing:
         existing = frappe.db.get_value("Customer", {"customer_name": name})
 
@@ -88,8 +89,8 @@ def _upsert_customer(contact):
 
     customer = frappe.new_doc("Customer")
     customer.customer_name = name
-    customer.customer_type = "Company" if contact.get("contactGroup") == 3 else "Individual"
-    customer.tax_id = contact.get("taxNumber")
+    customer.customer_type = "Company" if str(contact.get("contactGroup")) == "3" else "Individual"
+    customer.tax_id = tax_id or None
     customer.flowaccount_contact_id = fa_id
     customer.flags.ignore_permissions = True
     customer.insert(ignore_mandatory=True)
@@ -134,14 +135,16 @@ def _upsert_document(doc_type, record):
     record_id = str(record.get("recordId") or record.get("id") or "")
     if not record_id:
         return
+    if record.get("isDelete") in (True, "true"):
+        return
 
     values = {
         "document_serial": record.get("documentSerial"),
         "contact_name": record.get("contactName"),
         "issue_date": (record.get("publishedOn") or "")[:10] or None,
         "due_date": (record.get("dueDate") or "")[:10] or None,
-        "grand_total": record.get("grandTotal") or 0,
-        "status": str(record.get("status") or ""),
+        "grand_total": float(record.get("grandTotal") or 0),
+        "status": record.get("statusString") or str(record.get("status") or ""),
         "payload": frappe.as_json(record),
         "last_synced": frappe.utils.now(),
     }
