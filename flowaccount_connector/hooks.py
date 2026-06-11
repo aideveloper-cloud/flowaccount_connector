@@ -5,6 +5,16 @@ app_description = "Push ERPNext sales documents to FlowAccount via OpenAPI"
 app_email = "ai.developer@kgarden.local"
 app_license = "MIT"
 
+# Show FlowAccount as a tile on the /apps screen.
+add_to_apps_screen = [
+    {
+        "name": "flowaccount_connector",
+        "logo": "/assets/flowaccount_connector/images/flowaccount-logo.svg",
+        "title": "FlowAccount",
+        "route": "/app/flowaccount-document",
+    }
+]
+
 # Push to FlowAccount when a Quotation is submitted.
 doc_events = {
     "Quotation": {
