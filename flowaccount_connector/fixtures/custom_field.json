@@ -1,6 +1,7 @@
 [
  {
   "doctype": "Custom Field",
+  "name": "Quotation-flowaccount_document_id",
   "dt": "Quotation",
   "fieldname": "flowaccount_document_id",
   "label": "FlowAccount Document",
@@ -12,6 +13,7 @@
  },
  {
   "doctype": "Custom Field",
+  "name": "Quotation-flowaccount_synced",
   "dt": "Quotation",
   "fieldname": "flowaccount_synced",
   "label": "FlowAccount Synced",
