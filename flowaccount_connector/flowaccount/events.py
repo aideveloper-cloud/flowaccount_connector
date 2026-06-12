@@ -25,28 +25,34 @@ def on_quotation_submit(doc, method=None):
 
 
 def resolve_account(doc):
-    """Pick which FlowAccount account receives this quotation.
+    """Pick which FlowAccount account receives this quotation, or None to
+    keep it in ERPNext only.
 
-    Explicit choice on the form wins; Auto routes VAT documents to the
-    company account and no-VAT (B2C) ones to the shop account when its
-    credentials are configured.
+    Business rule (decided 2026-06): B2B/VAT documents live in FlowAccount
+    (company account); B2C/no-VAT documents are issued natively in ERPNext
+    and are NOT pushed. Explicit choice on the form always wins.
     """
     configured = client.accounts()
     choice = doc.get("flowaccount_entity") or "Auto"
+    if choice == "ERPNext Only":
+        return None
     if choice == "Company":
         return "company"
     if choice == "Shop":
-        return "shop" if "shop" in configured else "company"
+        return "shop" if "shop" in configured else None
     has_vat = bool(doc.get("total_taxes_and_charges"))
-    if not has_vat and "shop" in configured:
-        return "shop"
-    return "company"
+    if has_vat:
+        return "company"
+    return "shop" if "shop" in configured else None
 
 
 def push_quotation(quotation_name):
     doc = frappe.get_doc("Quotation", quotation_name)
+    account = resolve_account(doc)
+    if not account:
+        return
     payload = mapping.quotation_to_payload(doc)
-    result = client.create_quotation(payload, account=resolve_account(doc))
+    result = client.create_quotation(payload, account=account)
 
     data = (result or {}).get("data") or {}
     fa_id = data.get("recordId") or data.get("documentSerial") or data.get("id")

@@ -30,9 +30,9 @@
   "fieldname": "flowaccount_entity",
   "label": "FlowAccount Entity",
   "fieldtype": "Select",
-  "options": "Auto\nCompany\nShop",
+  "options": "Auto\nCompany\nShop\nERPNext Only",
   "default": "Auto",
-  "description": "Auto: มี VAT → Company, ไม่มี VAT → Shop (หน้าร้าน)",
+  "description": "Auto: มี VAT → ส่งเข้า FlowAccount บริษัท / ไม่มี VAT (B2C) → เก็บใน ERPNext ไม่ส่งออก",
   "insert_after": "flowaccount_synced",
   "module": "FlowAccount Connector",
   "no_copy": 1
