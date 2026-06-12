@@ -10,7 +10,7 @@
 | Quotation (ทีมขายสร้างใน ERPNext) | ERPNext → FlowAccount | — (push ตอน Submit) |
 | ลูกค้า (Contacts ใน FlowAccount) | FlowAccount → ERPNext | Customer (upsert จริง) |
 | สินค้า (Products ใน FlowAccount) | FlowAccount → ERPNext | Item (non-stock, upsert จริง) |
-| ใบแจ้งหนี้/ใบกำกับภาษี/ใบเสร็จ/ใบวางบิล | FlowAccount → ERPNext | FlowAccount Document (สำเนา read-only) |
+| เอกสารทุกชนิด: ใบเสนอราคา/ใบวางบิล/ใบแจ้งหนี้-ใบกำกับภาษี/ใบเสร็จ/ใบลดหนี้-เพิ่มหนี้/ค่าใช้จ่าย/ใบสั่งซื้อ | FlowAccount → ERPNext | FlowAccount Document (สำเนา read-only) |
 
 > เอกสารขายจาก FlowAccount เก็บเป็น "สำเนา" ไม่สร้างเป็น Sales Invoice จริง
 > เพื่อไม่ให้ ERPNext ลงบัญชี GL ซ้ำกับสมุดบัญชีของ FlowAccount

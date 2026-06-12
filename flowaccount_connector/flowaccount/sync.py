@@ -19,10 +19,19 @@ import frappe
 from flowaccount_connector.flowaccount import client
 
 # No separate /invoices endpoint exists — invoices live inside /tax-invoices.
+# Totals probed live 2026-06-12: quotations 19.4k, expenses 17.3k,
+# tax-invoices 10.6k, billing-notes/receipts ~10k, credit-notes 202,
+# purchases 82. ERPNext-born quotations pushed out will reappear here as
+# read-only mirrors, which is harmless (mirrors never push back).
 DOCUMENT_ENDPOINTS = {
+    "quotation": "/quotations",
     "billing-note": "/billing-notes",
     "tax-invoice": "/tax-invoices",
     "receipt": "/receipts",
+    "credit-note": "/credit-notes",
+    "debit-note": "/debit-notes",
+    "expense": "/expenses",
+    "purchase": "/purchases",
 }
 
 
