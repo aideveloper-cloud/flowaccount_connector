@@ -67,3 +67,50 @@ def push_quotation(quotation_name):
             update_modified=False,
         )
         frappe.db.commit()
+
+
+def on_item_save(doc, method=None):
+    """Item created in ERPNext -> create it in FlowAccount so accountants can
+    pick it on documents there. One-way, create-once: items that already
+    carry a FlowAccount id (pulled or previously pushed) are skipped."""
+    if not frappe.conf.get("flowaccount_enabled"):
+        return
+    if frappe.conf.get("flowaccount_push_disabled"):
+        return
+    if doc.get("flowaccount_product_id"):
+        return
+    if doc.get("disabled"):
+        return
+    frappe.enqueue(
+        "flowaccount_connector.flowaccount.events.push_item",
+        queue="short",
+        item_code=doc.name,
+    )
+
+
+def push_item(item_code):
+    doc = frappe.get_doc("Item", item_code)
+    if doc.get("flowaccount_product_id"):
+        return
+
+    # Always non-inventory (type 3) on purpose: stock has exactly one owner,
+    # ERPNext. FlowAccount must never run its own parallel stock count.
+    payload = {
+        "type": 3,
+        "code": doc.item_code,
+        "name": doc.item_name or doc.item_code,
+        "sellDescription": doc.description or "",
+        "unitName": doc.stock_uom or "",
+        "sellPrice": float(doc.get("standard_rate") or 0),
+    }
+    result = client._request("POST", "/products", json_body=payload)
+
+    data = (result or {}).get("data") or {}
+    fa_id = data.get("id")
+    if fa_id:
+        frappe.db.set_value(
+            "Item", item_code,
+            {"flowaccount_product_id": str(fa_id)},
+            update_modified=False,
+        )
+        frappe.db.commit()

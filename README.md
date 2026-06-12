@@ -8,8 +8,13 @@
 | ข้อมูล | ทิศทาง | ปลายทางใน ERPNext |
 |---|---|---|
 | Quotation (ทีมขายสร้างใน ERPNext) | ERPNext → FlowAccount | — (push ตอน Submit) |
+| Item ที่สร้างใหม่ใน ERPNext | ERPNext → FlowAccount | — (push เป็น product ชนิด non-inventory ตอนสร้าง) |
 | ลูกค้า (Contacts ใน FlowAccount) | FlowAccount → ERPNext | Customer (upsert จริง) |
 | สินค้า (Products ใน FlowAccount) | FlowAccount → ERPNext | Item (non-stock, upsert จริง) |
+
+> **สต๊อกมีเจ้าของเดียวคือ ERPNext** — สินค้าที่ push ไป FlowAccount เป็นชนิด non-inventory
+> โดยเจตนา (FlowAccount ไม่มี API ปรับยอดสต๊อก และไม่ควรมีสต๊อกสองชุด)
+> การตัดสต๊อกจากยอดขายฝั่ง FlowAccount ทำใน ERPNext จากเอกสารที่ pull เข้ามา
 | เอกสารทุกชนิด: ใบเสนอราคา/ใบวางบิล/ใบแจ้งหนี้-ใบกำกับภาษี/ใบเสร็จ/ใบลดหนี้-เพิ่มหนี้/ค่าใช้จ่าย/ใบสั่งซื้อ | FlowAccount → ERPNext | FlowAccount Document (สำเนา read-only) |
 
 > เอกสารขายจาก FlowAccount เก็บเป็น "สำเนา" ไม่สร้างเป็น Sales Invoice จริง

@@ -15,11 +15,15 @@ add_to_apps_screen = [
     }
 ]
 
-# Push to FlowAccount when a Quotation is submitted.
+# Push to FlowAccount: quotations on submit, new items on first save.
 doc_events = {
     "Quotation": {
         "on_submit": "flowaccount_connector.flowaccount.events.on_quotation_submit",
-    }
+    },
+    "Item": {
+        "after_insert": "flowaccount_connector.flowaccount.events.on_item_save",
+        "on_update": "flowaccount_connector.flowaccount.events.on_item_save",
+    },
 }
 
 # Pull FlowAccount masters/documents into ERPNext every hour.
