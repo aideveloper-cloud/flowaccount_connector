@@ -27,6 +27,9 @@ DOCUMENT_ENDPOINTS = {
 
 
 def pull_all():
+    """Hourly dispatcher. Each phase runs as its own long-queue job because a
+    full backfill (10k+ records) blows past the default 5-minute job timeout
+    and gets killed silently mid-transaction."""
     if not frappe.conf.get("flowaccount_enabled"):
         return
     if not frappe.conf.get("flowaccount_pull_enabled"):
@@ -34,36 +37,60 @@ def pull_all():
 
     max_pages = int(frappe.conf.get("flowaccount_pull_pages") or 5)
 
-    for label, fn in (
-        ("contacts", lambda: pull_contacts(max_pages)),
-        ("products", lambda: pull_products(max_pages)),
-        ("documents", lambda: pull_documents(max_pages)),
-    ):
-        try:
-            fn()
-            frappe.db.commit()
-        except Exception:
-            frappe.db.rollback()
-            frappe.log_error(
-                title=f"FlowAccount pull failed: {label}",
-                message=frappe.get_traceback(),
-            )
+    for phase in ("contacts", "products", "documents"):
+        frappe.enqueue(
+            "flowaccount_connector.flowaccount.sync.run_phase",
+            queue="long",
+            timeout=7200,
+            job_id=f"flowaccount-pull-{phase}",
+            deduplicate=True,
+            phase=phase,
+            max_pages=max_pages,
+        )
+
+
+def run_phase(phase, max_pages=5):
+    fn = {
+        "contacts": pull_contacts,
+        "products": pull_products,
+        "documents": pull_documents,
+    }[phase]
+    try:
+        fn(max_pages)
+        frappe.db.commit()
+    except Exception:
+        frappe.db.rollback()
+        frappe.log_error(
+            title=f"FlowAccount pull failed: {phase}",
+            message=frappe.get_traceback(),
+        )
+
+
+COMMIT_EVERY = 200
 
 
 def pull_contacts(max_pages=5):
-    for contact in client.iter_list("/contacts", max_pages=max_pages):
+    for i, contact in enumerate(client.iter_list("/contacts", max_pages=max_pages), 1):
         _upsert_customer(contact)
+        if i % COMMIT_EVERY == 0:
+            frappe.db.commit()
 
 
 def pull_products(max_pages=5):
-    for product in client.iter_list("/products", max_pages=max_pages):
+    for i, product in enumerate(client.iter_list("/products", max_pages=max_pages), 1):
         _upsert_item(product)
+        if i % COMMIT_EVERY == 0:
+            frappe.db.commit()
 
 
 def pull_documents(max_pages=5):
+    i = 0
     for doc_type, path in DOCUMENT_ENDPOINTS.items():
         for record in client.iter_list(path, max_pages=max_pages):
             _upsert_document(doc_type, record)
+            i += 1
+            if i % COMMIT_EVERY == 0:
+                frappe.db.commit()
 
 
 def _upsert_customer(contact):
