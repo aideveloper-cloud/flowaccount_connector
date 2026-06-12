@@ -68,8 +68,8 @@ def pull_documents(max_pages=5):
 
 def _upsert_customer(contact):
     fa_id = str(contact.get("id") or "")
-    name = (contact.get("contactName") or "").strip()
-    tax_id = (contact.get("contactTaxId") or "").strip()
+    name = _clip(contact.get("contactName"))
+    tax_id = _clip(contact.get("contactTaxId"))
     if not fa_id or not name or name == "-":
         return
 
@@ -98,13 +98,13 @@ def _upsert_customer(contact):
 
 def _upsert_item(product):
     fa_id = str(product.get("id") or "")
-    name = (product.get("name") or "").strip()
+    name = _clip(product.get("name"))
     if not fa_id or not name:
         return
 
     existing = frappe.db.get_value("Item", {"flowaccount_product_id": fa_id})
     if not existing:
-        code = (product.get("code") or "").strip()
+        code = _clip(product.get("code"))
         existing = frappe.db.get_value("Item", {"item_code": code or name})
 
     if existing:
@@ -116,7 +116,7 @@ def _upsert_item(product):
         return
 
     item = frappe.new_doc("Item")
-    item.item_code = (product.get("code") or "").strip() or name
+    item.item_code = _clip(product.get("code")) or name
     item.item_name = name
     item.item_group = _default_item_group()
     item.stock_uom = "Nos"
@@ -131,6 +131,12 @@ def _default_item_group():
     return leaf or "All Item Groups"
 
 
+def _clip(value, length=140):
+    # FlowAccount data carries trailing-space padding that can exceed
+    # frappe's 140-char Data field limit and abort the whole batch.
+    return str(value or "").strip()[:length]
+
+
 def _upsert_document(doc_type, record):
     record_id = str(record.get("recordId") or record.get("id") or "")
     if not record_id:
@@ -139,12 +145,12 @@ def _upsert_document(doc_type, record):
         return
 
     values = {
-        "document_serial": record.get("documentSerial"),
-        "contact_name": record.get("contactName"),
+        "document_serial": _clip(record.get("documentSerial")),
+        "contact_name": _clip(record.get("contactName")),
         "issue_date": (record.get("publishedOn") or "")[:10] or None,
         "due_date": (record.get("dueDate") or "")[:10] or None,
         "grand_total": float(record.get("grandTotal") or 0),
-        "status": record.get("statusString") or str(record.get("status") or ""),
+        "status": _clip(record.get("statusString") or record.get("status")),
         "payload": frappe.as_json(record),
         "last_synced": frappe.utils.now(),
     }
