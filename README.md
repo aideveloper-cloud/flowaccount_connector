@@ -54,6 +54,17 @@ dashboard → **Sites → ... → Site Config** เพิ่ม key เหล่
 | `flowaccount_pull_enabled`  | `1` เมื่อพร้อมเปิด pull sync (ปิดไว้โดย default) |
 | `flowaccount_pull_pages`    | (ไม่บังคับ) จำนวนหน้าที่ดึงต่อรอบ ค่าเริ่มต้น 5 หน้า × 50 รายการ |
 | `flowaccount_push_disabled` | `1` บน site UAT/ทดสอบ — ปิดขา push (กันเอกสารทดสอบหลุดเข้า FlowAccount จริง) แต่ pull ยังทำงาน |
+| `flowaccount_extra_accounts` | (ไม่บังคับ) รายชื่อบัญชีเพิ่ม คั่นด้วย comma เช่น `shop` สำหรับหน้าร้าน B2C/no-VAT |
+| `flowaccount_shop_client_id` / `flowaccount_shop_client_secret` | credentials ของบัญชีหน้าร้าน (ใช้ชื่อ key ตาม label ใน extra_accounts) |
+
+## หลายบัญชี FlowAccount (บริษัท + หน้าร้าน)
+
+- **Pull**: ดึงลูกค้า/สินค้า/เอกสารจากทุกบัญชีที่ตั้งค่า — เอกสารมีฟิลด์ Account (`company`/`shop`)
+  ให้กรองแยกกัน ส่วนลูกค้า/สินค้าของบัญชีเพิ่มจะเก็บ ID แบบมี prefix (`shop:12345`) กันชนกับบัญชีหลัก
+- **Push (ใบเสนอราคา)**: ฟิลด์ "FlowAccount Entity" บน Quotation เลือกได้:
+  - `Auto` (ค่าเริ่มต้น): มี VAT → บัญชีบริษัท / ไม่มี VAT → บัญชีหน้าร้าน (ถ้าตั้ง credentials ไว้)
+  - `Company` / `Shop`: บังคับปลายทางเอง
+- ฝั่ง mapping ส่ง `isVat` ตามภาษีในใบอยู่แล้ว — ใบ no-VAT ที่เข้าบัญชีหน้าร้านจะออกเป็นเอกสาร no-VAT ตรงตามหน้าร้านจริง
 
 > ใช้ secret **ตัวใหม่** ที่ regenerate หลังจากที่ตัวเดิมเคยถูกแชร์ออกไป
 

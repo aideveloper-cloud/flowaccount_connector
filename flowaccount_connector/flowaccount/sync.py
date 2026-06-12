@@ -36,9 +36,9 @@ DOCUMENT_ENDPOINTS = {
 
 
 def pull_all():
-    """Hourly dispatcher. Each phase runs as its own long-queue job because a
-    full backfill (10k+ records) blows past the default 5-minute job timeout
-    and gets killed silently mid-transaction."""
+    """Hourly dispatcher. Each (account, phase) runs as its own long-queue job
+    because a full backfill (10k+ records) blows past the default 5-minute job
+    timeout and gets killed silently mid-transaction."""
     if not frappe.conf.get("flowaccount_enabled"):
         return
     if not frappe.conf.get("flowaccount_pull_enabled"):
@@ -46,31 +46,33 @@ def pull_all():
 
     max_pages = int(frappe.conf.get("flowaccount_pull_pages") or 5)
 
-    for phase in ("contacts", "products", "documents"):
-        frappe.enqueue(
-            "flowaccount_connector.flowaccount.sync.run_phase",
-            queue="long",
-            timeout=7200,
-            job_id=f"flowaccount-pull-{phase}",
-            deduplicate=True,
-            phase=phase,
-            max_pages=max_pages,
-        )
+    for account in client.accounts():
+        for phase in ("contacts", "products", "documents"):
+            frappe.enqueue(
+                "flowaccount_connector.flowaccount.sync.run_phase",
+                queue="long",
+                timeout=7200,
+                job_id=f"flowaccount-pull-{account}-{phase}",
+                deduplicate=True,
+                phase=phase,
+                account=account,
+                max_pages=max_pages,
+            )
 
 
-def run_phase(phase, max_pages=5):
+def run_phase(phase, account="company", max_pages=5):
     fn = {
         "contacts": pull_contacts,
         "products": pull_products,
         "documents": pull_documents,
     }[phase]
     try:
-        fn(max_pages)
+        fn(max_pages, account)
         frappe.db.commit()
     except Exception:
         frappe.db.rollback()
         frappe.log_error(
-            title=f"FlowAccount pull failed: {phase}",
+            title=f"FlowAccount pull failed: {phase} ({account})",
             message=frappe.get_traceback(),
         )
 
@@ -78,35 +80,41 @@ def run_phase(phase, max_pages=5):
 COMMIT_EVERY = 200
 
 
-def pull_contacts(max_pages=5):
-    for i, contact in enumerate(client.iter_list("/contacts", max_pages=max_pages), 1):
-        _upsert_customer(contact)
+def pull_contacts(max_pages=5, account="company"):
+    for i, contact in enumerate(client.iter_list("/contacts", max_pages=max_pages, account=account), 1):
+        _upsert_customer(contact, account)
         if i % COMMIT_EVERY == 0:
             frappe.db.commit()
 
 
-def pull_products(max_pages=5):
-    for i, product in enumerate(client.iter_list("/products", max_pages=max_pages), 1):
-        _upsert_item(product)
+def pull_products(max_pages=5, account="company"):
+    for i, product in enumerate(client.iter_list("/products", max_pages=max_pages, account=account), 1):
+        _upsert_item(product, account)
         if i % COMMIT_EVERY == 0:
             frappe.db.commit()
 
 
-def pull_documents(max_pages=5):
+def pull_documents(max_pages=5, account="company"):
     i = 0
     for doc_type, path in DOCUMENT_ENDPOINTS.items():
-        for record in client.iter_list(path, max_pages=max_pages):
-            _upsert_document(doc_type, record)
+        for record in client.iter_list(path, max_pages=max_pages, account=account):
+            _upsert_document(doc_type, record, account)
             i += 1
             if i % COMMIT_EVERY == 0:
                 frappe.db.commit()
 
 
-def _upsert_customer(contact):
-    fa_id = str(contact.get("id") or "")
+def _qualified_id(account, fa_id):
+    # IDs are unique only within one FlowAccount account; prefix extras so a
+    # shop contact can never link to a company contact with the same number.
+    return fa_id if account == "company" else f"{account}:{fa_id}"
+
+
+def _upsert_customer(contact, account="company"):
+    fa_id = _qualified_id(account, str(contact.get("id") or ""))
     name = _clip(contact.get("contactName"))
     tax_id = _clip(contact.get("contactTaxId"))
-    if not fa_id or not name or name == "-":
+    if not str(contact.get("id") or "") or not name or name == "-":
         return
 
     existing = frappe.db.get_value("Customer", {"flowaccount_contact_id": fa_id})
@@ -132,10 +140,10 @@ def _upsert_customer(contact):
     customer.insert(ignore_mandatory=True)
 
 
-def _upsert_item(product):
-    fa_id = str(product.get("id") or "")
+def _upsert_item(product, account="company"):
+    fa_id = _qualified_id(account, str(product.get("id") or ""))
     name = _clip(product.get("name"))
-    if not fa_id or not name:
+    if not str(product.get("id") or "") or not name:
         return
 
     existing = frappe.db.get_value("Item", {"flowaccount_product_id": fa_id})
@@ -173,7 +181,7 @@ def _clip(value, length=140):
     return str(value or "").strip()[:length]
 
 
-def _upsert_document(doc_type, record):
+def _upsert_document(doc_type, record, account="company"):
     record_id = str(record.get("recordId") or record.get("id") or "")
     if not record_id:
         return
@@ -181,6 +189,7 @@ def _upsert_document(doc_type, record):
         return
 
     values = {
+        "account": account,
         "document_serial": _clip(record.get("documentSerial")),
         "contact_name": _clip(record.get("contactName")),
         "issue_date": (record.get("publishedOn") or "")[:10] or None,
@@ -193,8 +202,14 @@ def _upsert_document(doc_type, record):
 
     existing = frappe.db.get_value(
         "FlowAccount Document",
-        {"document_type": doc_type, "record_id": record_id},
+        {"document_type": doc_type, "record_id": record_id, "account": account},
     )
+    if not existing and account == "company":
+        # Rows mirrored before the account field existed have account = NULL.
+        existing = frappe.db.get_value(
+            "FlowAccount Document",
+            {"document_type": doc_type, "record_id": record_id, "account": ("in", ("", None))},
+        )
     if existing:
         frappe.db.set_value("FlowAccount Document", existing, values, update_modified=False)
         return

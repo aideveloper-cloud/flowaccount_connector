@@ -24,10 +24,29 @@ def on_quotation_submit(doc, method=None):
     )
 
 
+def resolve_account(doc):
+    """Pick which FlowAccount account receives this quotation.
+
+    Explicit choice on the form wins; Auto routes VAT documents to the
+    company account and no-VAT (B2C) ones to the shop account when its
+    credentials are configured.
+    """
+    configured = client.accounts()
+    choice = doc.get("flowaccount_entity") or "Auto"
+    if choice == "Company":
+        return "company"
+    if choice == "Shop":
+        return "shop" if "shop" in configured else "company"
+    has_vat = bool(doc.get("total_taxes_and_charges"))
+    if not has_vat and "shop" in configured:
+        return "shop"
+    return "company"
+
+
 def push_quotation(quotation_name):
     doc = frappe.get_doc("Quotation", quotation_name)
     payload = mapping.quotation_to_payload(doc)
-    result = client.create_quotation(payload)
+    result = client.create_quotation(payload, account=resolve_account(doc))
 
     data = (result or {}).get("data") or {}
     fa_id = data.get("recordId") or data.get("documentSerial") or data.get("id")

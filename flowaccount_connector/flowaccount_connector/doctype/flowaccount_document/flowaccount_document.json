@@ -1,10 +1,11 @@
 {
  "actions": [],
- "autoname": "format:FA-{document_type}-{record_id}",
+ "autoname": "format:FA-{account}-{document_type}-{record_id}",
  "creation": "2026-06-11 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "account",
   "document_type",
   "record_id",
   "document_serial",
@@ -17,6 +18,14 @@
   "payload"
  ],
  "fields": [
+  {
+   "fieldname": "account",
+   "fieldtype": "Data",
+   "label": "FlowAccount Account",
+   "in_standard_filter": 1,
+   "read_only": 1,
+   "default": "company"
+  },
   {
    "fieldname": "document_type",
    "fieldtype": "Data",

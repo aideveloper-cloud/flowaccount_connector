@@ -25,6 +25,20 @@
  },
  {
   "doctype": "Custom Field",
+  "name": "Quotation-flowaccount_entity",
+  "dt": "Quotation",
+  "fieldname": "flowaccount_entity",
+  "label": "FlowAccount Entity",
+  "fieldtype": "Select",
+  "options": "Auto\nCompany\nShop",
+  "default": "Auto",
+  "description": "Auto: มี VAT → Company, ไม่มี VAT → Shop (หน้าร้าน)",
+  "insert_after": "flowaccount_synced",
+  "module": "FlowAccount Connector",
+  "no_copy": 1
+ },
+ {
+  "doctype": "Custom Field",
   "name": "Customer-flowaccount_contact_id",
   "dt": "Customer",
   "fieldname": "flowaccount_contact_id",
