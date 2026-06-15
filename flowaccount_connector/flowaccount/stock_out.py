@@ -79,6 +79,22 @@ def maybe_deduct(fa_doc_name, doc_type):
     )
 
 
+@frappe.whitelist()
+def run_deduct(fa_doc_name):
+    """Manually deduct stock for one mirrored document.
+
+    Doubles as the backfill/retry tool for documents pulled before the
+    feature was enabled. Bypasses the flowaccount_deduct_stock gate on
+    purpose — an explicit, audited admin action.
+    """
+    frappe.only_for("System Manager")
+    deduct_for_document(fa_doc_name)
+    return frappe.db.get_value(
+        "FlowAccount Document", fa_doc_name,
+        ["stock_deducted", "stock_entry"], as_dict=True,
+    )
+
+
 def deduct_for_document(fa_doc_name):
     mirror = frappe.get_doc("FlowAccount Document", fa_doc_name)
     if mirror.get("stock_deducted"):
