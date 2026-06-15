@@ -21,14 +21,16 @@ Warehouse comes from KGF Stock Settings (single source of truth), with a
 """
 
 import frappe
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 DEFAULT_ISSUE_TYPES = ("tax-invoice",)
 DEFAULT_RETURN_TYPES = ("credit-note",)
 
 
 def _enabled():
-    return bool(frappe.conf.get("flowaccount_deduct_stock"))
+    # cint so a String "0" in Site Config reads as off (a bare "0" string
+    # is otherwise truthy in Python).
+    return bool(cint(frappe.conf.get("flowaccount_deduct_stock")))
 
 
 def _types(key, default):

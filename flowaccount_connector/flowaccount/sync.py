@@ -16,6 +16,8 @@ Site Config keys:
 """
 
 import frappe
+from frappe.utils import cint
+
 from flowaccount_connector.flowaccount import client, stock_out
 
 # No separate /invoices endpoint exists — invoices live inside /tax-invoices.
@@ -39,12 +41,13 @@ def pull_all():
     """Hourly dispatcher. Each (account, phase) runs as its own long-queue job
     because a full backfill (10k+ records) blows past the default 5-minute job
     timeout and gets killed silently mid-transaction."""
-    if not frappe.conf.get("flowaccount_enabled"):
+    # cint so a String "0" in Site Config reads as off, not truthy.
+    if not cint(frappe.conf.get("flowaccount_enabled")):
         return
-    if not frappe.conf.get("flowaccount_pull_enabled"):
+    if not cint(frappe.conf.get("flowaccount_pull_enabled")):
         return
 
-    max_pages = int(frappe.conf.get("flowaccount_pull_pages") or 5)
+    max_pages = cint(frappe.conf.get("flowaccount_pull_pages")) or 5
 
     for account in client.accounts():
         for phase in ("contacts", "products", "documents"):

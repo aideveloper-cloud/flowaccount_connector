@@ -5,15 +5,24 @@ Idempotent: a quotation already carrying a FlowAccount id is skipped.
 """
 
 import frappe
+from frappe.utils import cint
+
 from flowaccount_connector.flowaccount import client, mapping
 
 
+def _flag(key):
+    # Tolerate Site Config values typed as String: cint("0") == 0, so a
+    # "0"/"1" string behaves the same as an Int (a bare string "0" is
+    # otherwise truthy in Python and would silently invert an off-switch).
+    return cint(frappe.conf.get(key))
+
+
 def on_quotation_submit(doc, method=None):
-    if not frappe.conf.get("flowaccount_enabled"):
+    if not _flag("flowaccount_enabled"):
         return
     # Kill-switch for UAT/staging sites that share production credentials:
     # lets the read-only pull run while blocking outbound document creation.
-    if frappe.conf.get("flowaccount_push_disabled"):
+    if _flag("flowaccount_push_disabled"):
         return
     if doc.get("flowaccount_document_id"):
         return
@@ -73,9 +82,9 @@ def on_item_save(doc, method=None):
     """Item created in ERPNext -> create it in FlowAccount so accountants can
     pick it on documents there. One-way, create-once: items that already
     carry a FlowAccount id (pulled or previously pushed) are skipped."""
-    if not frappe.conf.get("flowaccount_enabled"):
+    if not _flag("flowaccount_enabled"):
         return
-    if frappe.conf.get("flowaccount_push_disabled"):
+    if _flag("flowaccount_push_disabled"):
         return
     if doc.get("flowaccount_product_id"):
         return
