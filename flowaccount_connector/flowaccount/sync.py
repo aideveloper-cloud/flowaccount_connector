@@ -16,7 +16,7 @@ Site Config keys:
 """
 
 import frappe
-from flowaccount_connector.flowaccount import client
+from flowaccount_connector.flowaccount import client, stock_out
 
 # No separate /invoices endpoint exists — invoices live inside /tax-invoices.
 # Totals probed live 2026-06-12: quotations 19.4k, expenses 17.3k,
@@ -220,3 +220,7 @@ def _upsert_document(doc_type, record, account="company"):
     mirror.update(values)
     mirror.flags.ignore_permissions = True
     mirror.insert()
+
+    # Newly-mirrored sale doc -> deduct ERPNext stock (no-op unless enabled).
+    # Only on insert, never on re-pull, to avoid flooding the queue.
+    stock_out.maybe_deduct(mirror.name, doc_type)

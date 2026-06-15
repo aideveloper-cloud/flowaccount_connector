@@ -14,6 +14,8 @@
   "due_date",
   "grand_total",
   "status",
+  "stock_deducted",
+  "stock_entry",
   "last_synced",
   "payload"
  ],
@@ -82,6 +84,20 @@
    "fieldtype": "Data",
    "label": "FlowAccount Status",
    "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_deducted",
+   "fieldtype": "Check",
+   "label": "Stock Deducted",
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "label": "Stock Entry",
+   "options": "Stock Entry",
    "read_only": 1
   },
   {

@@ -12,13 +12,33 @@
 | ลูกค้า (Contacts ใน FlowAccount) | FlowAccount → ERPNext | Customer (upsert จริง) |
 | สินค้า (Products ใน FlowAccount) | FlowAccount → ERPNext | Item (non-stock, upsert จริง) |
 
+| เอกสารทุกชนิด: ใบเสนอราคา/ใบวางบิล/ใบแจ้งหนี้-ใบกำกับภาษี/ใบเสร็จ/ใบลดหนี้-เพิ่มหนี้/ค่าใช้จ่าย/ใบสั่งซื้อ | FlowAccount → ERPNext | FlowAccount Document (สำเนา read-only) |
+
 > **สต๊อกมีเจ้าของเดียวคือ ERPNext** — สินค้าที่ push ไป FlowAccount เป็นชนิด non-inventory
 > โดยเจตนา (FlowAccount ไม่มี API ปรับยอดสต๊อก และไม่ควรมีสต๊อกสองชุด)
-> การตัดสต๊อกจากยอดขายฝั่ง FlowAccount ทำใน ERPNext จากเอกสารที่ pull เข้ามา
-| เอกสารทุกชนิด: ใบเสนอราคา/ใบวางบิล/ใบแจ้งหนี้-ใบกำกับภาษี/ใบเสร็จ/ใบลดหนี้-เพิ่มหนี้/ค่าใช้จ่าย/ใบสั่งซื้อ | FlowAccount → ERPNext | FlowAccount Document (สำเนา read-only) |
 
 > เอกสารขายจาก FlowAccount เก็บเป็น "สำเนา" ไม่สร้างเป็น Sales Invoice จริง
 > เพื่อไม่ให้ ERPNext ลงบัญชี GL ซ้ำกับสมุดบัญชีของ FlowAccount
+
+## ตัดสต๊อกจากยอดขาย B2B ฝั่ง FlowAccount (stock_out.py)
+
+เอกสารขายที่ออกใน FlowAccount (เช่นใบกำกับภาษี) ถูก pull เข้ามา แล้วตัดสต๊อกใน ERPNext
+เป็น **Stock Entry (Material Issue)** — ตัดของออกโดยไม่ลงรายได้/COGS ซ้ำ (บัญชีอยู่ FlowAccount)
+
+| Site Config key | ค่า |
+|---|---|
+| `flowaccount_deduct_stock` | `1` เพื่อเปิด (ปิดไว้ default) |
+| `flowaccount_deduct_doctypes` | (ไม่บังคับ) ชนิดเอกสารที่ตัด คั่น comma · default `tax-invoice` |
+| `flowaccount_stock_warehouse` | fallback ถ้าไม่ได้ตั้ง KGF Stock Settings.default_warehouse |
+
+- คลังดึงจาก **KGF Stock Settings** (แหล่งเดียวกับ kgf_stock) ก่อน แล้วค่อย fallback
+- ตัด **เฉพาะ stock item** ที่ map ได้มั่นใจ (product id → `flowaccount_product_id` หรือรหัส → `item_code`)
+  · บรรทัดที่ไม่พบ/ไม่ใช่ stock item → ข้าม + log (ไม่เดาตัดผิด)
+- **idempotent**: แต่ละเอกสารตัดได้ครั้งเดียว (ฟิลด์ `stock_deducted` + `stock_entry` บน mirror)
+- ทำงานตอน mirror ใหม่ถูกสร้างเท่านั้น (ไม่ตัดซ้ำตอน re-pull)
+
+> ⚠️ ก่อนเปิด: ยืนยัน item matching กับเอกสารจริง 1 รอบ · เปิด `is_stock_item=1` + ใส่ยอดตั้งต้น
+> เฉพาะ SKU ที่คุมสต๊อก · เอกสารเก่าที่ pull ก่อนเปิดฟีเจอร์จะไม่ถูกตัดย้อนหลังอัตโนมัติ
 
 ติดตั้งบน Frappe Cloud ได้ **โดยไม่ต้องมี dev environment / ไม่ต้องแตะ terminal**
 
