@@ -15,14 +15,15 @@ add_to_apps_screen = [
     }
 ]
 
-# Push to FlowAccount: quotations on submit, new items on first save.
+# Push to FlowAccount: quotations on submit, items once on creation.
+# Item uses after_insert only (push-once) — NOT on_update, which would
+# re-enqueue a no-op job on every edit of every item.
 doc_events = {
     "Quotation": {
         "on_submit": "flowaccount_connector.flowaccount.events.on_quotation_submit",
     },
     "Item": {
         "after_insert": "flowaccount_connector.flowaccount.events.on_item_save",
-        "on_update": "flowaccount_connector.flowaccount.events.on_item_save",
     },
 }
 

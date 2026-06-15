@@ -166,7 +166,14 @@ def move_for_document(fa_doc_name, direction="issue"):
         if not item_code:
             skipped.append(line.get("name") or line.get("description"))
             continue
-        se_items.append({"item_code": item_code, "qty": qty, wh_field: warehouse})
+        # allow_zero_valuation_rate: this is a mirror-only stock move (costs
+        # live in FlowAccount), so never let a missing valuation rate abort it.
+        se_items.append({
+            "item_code": item_code,
+            "qty": qty,
+            wh_field: warehouse,
+            "allow_zero_valuation_rate": 1,
+        })
 
     if not se_items:
         # Nothing stock-controlled here — mark done so we never retry it.
