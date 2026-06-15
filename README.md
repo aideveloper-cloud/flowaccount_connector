@@ -28,8 +28,13 @@
 | Site Config key | ค่า |
 |---|---|
 | `flowaccount_deduct_stock` | `1` เพื่อเปิด (ปิดไว้ default) |
-| `flowaccount_deduct_doctypes` | (ไม่บังคับ) ชนิดเอกสารที่ตัด คั่น comma · default `tax-invoice` |
+| `flowaccount_deduct_doctypes` | (ไม่บังคับ) เอกสารที่ **ตัด** (Material Issue) คั่น comma · default `tax-invoice` |
+| `flowaccount_return_doctypes` | (ไม่บังคับ) เอกสารที่ **คืน** (Material Receipt) · default `credit-note` |
 | `flowaccount_stock_warehouse` | fallback ถ้าไม่ได้ตั้ง KGF Stock Settings.default_warehouse |
+
+ครอบคลุม edge case:
+- **ใบลดหนี้ (credit note)** → Material Receipt คืนของเข้าคลัง
+- **void/ยกเลิกเอกสารใน FlowAccount** ที่เคยตัดไปแล้ว → pull รอบถัดไปเจอ `isDelete` → cancel Stock Entry ที่ผูกไว้ (คืนสต๊อก) อัตโนมัติ
 
 - คลังดึงจาก **KGF Stock Settings** (แหล่งเดียวกับ kgf_stock) ก่อน แล้วค่อย fallback
 - ตัด **เฉพาะ stock item** ที่ map ได้มั่นใจ (product id → `flowaccount_product_id` หรือรหัส → `item_code`)

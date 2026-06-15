@@ -186,6 +186,14 @@ def _upsert_document(doc_type, record, account="company"):
     if not record_id:
         return
     if record.get("isDelete") in (True, "true"):
+        # Voided in FlowAccount: if we already moved stock for it, reverse it.
+        voided = frappe.db.get_value(
+            "FlowAccount Document",
+            {"document_type": doc_type, "record_id": record_id},
+            ["name", "stock_entry"], as_dict=True,
+        )
+        if voided and voided.stock_entry:
+            stock_out.maybe_reverse(voided.name)
         return
 
     values = {
@@ -221,6 +229,6 @@ def _upsert_document(doc_type, record, account="company"):
     mirror.flags.ignore_permissions = True
     mirror.insert()
 
-    # Newly-mirrored sale doc -> deduct ERPNext stock (no-op unless enabled).
+    # Newly-mirrored doc -> move ERPNext stock (no-op unless enabled).
     # Only on insert, never on re-pull, to avoid flooding the queue.
-    stock_out.maybe_deduct(mirror.name, doc_type)
+    stock_out.maybe_move(mirror.name, doc_type)
