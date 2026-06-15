@@ -125,6 +125,21 @@ def run_deduct(fa_doc_name):
     )
 
 
+@frappe.whitelist()
+def run_reverse(fa_doc_name):
+    """Manually undo the stock movement of one mirrored document.
+
+    For corrections / mis-pulled docs, and the manual counterpart to the
+    automatic isDelete reversal. System Manager only.
+    """
+    frappe.only_for("System Manager")
+    reverse_for_document(fa_doc_name)
+    return frappe.db.get_value(
+        "FlowAccount Document", fa_doc_name,
+        ["stock_deducted", "stock_entry"], as_dict=True,
+    )
+
+
 def move_for_document(fa_doc_name, direction="issue"):
     mirror = frappe.get_doc("FlowAccount Document", fa_doc_name)
     if mirror.get("stock_deducted"):
